@@ -1,0 +1,1 @@
+export { SourceVerification as default } from '../shared.jsx'

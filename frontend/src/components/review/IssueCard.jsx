@@ -1,0 +1,1 @@
+export { IssueCard as default } from '../shared.jsx'

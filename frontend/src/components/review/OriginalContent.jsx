@@ -1,0 +1,1 @@
+export { OriginalContent as default } from '../shared.jsx'

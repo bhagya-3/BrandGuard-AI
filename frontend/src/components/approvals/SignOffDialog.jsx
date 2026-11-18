@@ -1,0 +1,1 @@
+export { SignOffDialog as default } from '../shared.jsx'

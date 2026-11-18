@@ -1,0 +1,1 @@
+export { SuggestedCorrection as default } from '../shared.jsx'

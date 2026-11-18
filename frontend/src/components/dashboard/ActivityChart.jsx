@@ -1,0 +1,1 @@
+export { ActivityChart as default } from '../shared.jsx'

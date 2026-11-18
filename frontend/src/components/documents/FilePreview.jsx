@@ -1,0 +1,1 @@
+export { FilePreview as default } from '../shared.jsx'

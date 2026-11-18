@@ -1,0 +1,1 @@
+export { ReviewerAssignment as default } from '../shared.jsx'

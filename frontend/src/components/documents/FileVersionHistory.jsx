@@ -1,0 +1,1 @@
+export { FileVersionHistory as default } from '../shared.jsx'

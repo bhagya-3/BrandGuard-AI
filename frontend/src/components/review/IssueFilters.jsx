@@ -1,0 +1,1 @@
+export { IssueFilters as default } from '../shared.jsx'

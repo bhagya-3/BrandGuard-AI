@@ -1,0 +1,1 @@
+export { PermissionGuard as default } from '../shared.jsx'

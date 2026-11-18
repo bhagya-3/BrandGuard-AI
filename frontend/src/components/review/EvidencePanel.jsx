@@ -1,0 +1,1 @@
+export { EvidencePanel as default } from '../shared.jsx'

@@ -1,0 +1,1 @@
+export { AccessDenied as default } from '../shared.jsx'

@@ -1,0 +1,1 @@
+export { SourceOwner as default } from '../shared.jsx'

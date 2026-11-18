@@ -1,0 +1,1 @@
+export { ApprovalChecklist as default } from '../shared.jsx'

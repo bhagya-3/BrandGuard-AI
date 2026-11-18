@@ -1,0 +1,1 @@
+export { ApprovalTimeline as default } from '../shared.jsx'

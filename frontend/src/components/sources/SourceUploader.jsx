@@ -1,0 +1,1 @@
+export { SourceUploader as default } from '../shared.jsx'

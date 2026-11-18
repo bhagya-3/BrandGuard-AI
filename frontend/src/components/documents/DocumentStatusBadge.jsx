@@ -1,0 +1,1 @@
+export { DocumentStatusBadge as default } from '../shared.jsx'

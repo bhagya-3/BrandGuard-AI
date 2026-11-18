@@ -1,0 +1,1 @@
+export { FormError as default } from '../shared.jsx'

@@ -1,0 +1,1 @@
+export { RecentReviews as default } from '../shared.jsx'

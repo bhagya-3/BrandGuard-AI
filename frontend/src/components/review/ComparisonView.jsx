@@ -1,0 +1,1 @@
+export { ComparisonView as default } from '../shared.jsx'

@@ -1,0 +1,1 @@
+export { ReviewWorkspace as default } from '../shared.jsx'

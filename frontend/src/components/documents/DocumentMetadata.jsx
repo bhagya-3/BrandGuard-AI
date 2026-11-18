@@ -1,0 +1,1 @@
+export { DocumentMetadata as default } from '../shared.jsx'

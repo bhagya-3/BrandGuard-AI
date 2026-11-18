@@ -1,0 +1,1 @@
+export { ReviewComments as default } from '../shared.jsx'

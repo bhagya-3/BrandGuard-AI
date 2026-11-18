@@ -1,0 +1,1 @@
+export { ApprovalStatus as default } from '../shared.jsx'

@@ -1,0 +1,1 @@
+export { SourceCard as default } from '../shared.jsx'

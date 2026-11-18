@@ -1,0 +1,1 @@
+export { PendingApprovals as default } from '../shared.jsx'

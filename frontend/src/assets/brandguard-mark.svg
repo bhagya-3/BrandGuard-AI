@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title">
+  <title id="title">BrandGuard</title>
+  <rect width="48" height="48" rx="14" fill="#3a202d"/>
+  <path d="M24 8 38 14v10c0 8.6-5.8 14.4-14 17-8.2-2.6-14-8.4-14-17V14l14-6Z" fill="#ff2b80"/>
+  <path d="m17.5 24.5 4.2 4.2 8.8-9" fill="none" stroke="#292727" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.2"/>
+</svg>

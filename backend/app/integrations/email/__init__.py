@@ -1,0 +1,1 @@
+from app.integrations.email.email_service import send_email
