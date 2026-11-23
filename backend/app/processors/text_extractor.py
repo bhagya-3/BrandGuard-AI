@@ -2,7 +2,6 @@
 from io import BytesIO
 import math
 
-import pymupdf
 
 from app.processors.pdf_processor import (
     process_pdf,
@@ -30,6 +29,13 @@ def extract_text_from_pdf_with_ocr(
     content: bytes,
     result: dict,
 ) -> dict:
+    try:
+        import pymupdf
+    except Exception as exc:
+        raise TextExtractionError(
+            "PDF OCR requires PyMuPDF, but its native library could not be loaded."
+        ) from exc
+
     ocr_pages = []
 
     try:

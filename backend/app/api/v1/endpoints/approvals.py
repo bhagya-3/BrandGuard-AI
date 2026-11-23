@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_db
-from app.core.permissions import has_global_admin_access, require_permission
+from app.core.permissions import require_permission
 from app.models.approval import Approval
 from app.models.document import Document
 from app.models.finding import Finding
@@ -51,10 +51,9 @@ def list_approvals(
         Review, Approval.review_id == Review.id
     )
 
-    if not has_global_admin_access(user):
-        query = query.filter(
-            Review.organization_id == user.organization_id
-        )
+    query = query.filter(
+        Review.organization_id == user.organization_id
+    )
 
     approvals = query.order_by(
         Approval.requested_at.desc()
@@ -127,10 +126,9 @@ def decide_approval(
         .filter(Approval.id == approval_id)
     )
 
-    if not has_global_admin_access(user):
-        query = query.filter(
-            Review.organization_id == user.organization_id
-        )
+    query = query.filter(
+        Review.organization_id == user.organization_id
+    )
 
     approval = query.first()
 
