@@ -20,6 +20,8 @@ def _review_response(review: Review) -> dict:
     return {
         "id": review.id,
         "document_id": review.document_id,
+        "document_title": review.document.title if review.document else None,
+        "original_filename": review.document.original_filename if review.document else None,
         "status": review.status,
         "summary": review.summary,
         "overall_score": review.overall_score,
