@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_db
-from app.core.config import settings
+
 from app.models.document import Document
 from app.models.finding import Finding
 from app.models.review import Review
@@ -32,8 +32,14 @@ def _review_response(review: Review) -> dict:
                 "severity": finding.severity,
                 "title": finding.title,
                 "description": finding.description,
-                "location": finding.location,
-                "status": finding.status,
+"location": finding.location,
+"status": finding.status,
+"suggestion_generation_status": (
+    finding.suggestion_generation_status
+),
+"suggestion_generation_message": (
+    finding.suggestion_generation_message
+),
                 "evidence": [
                     {
                         "quote": evidence.quote,
@@ -87,7 +93,7 @@ def run_review(
             workspace_id=document.workspace_id,
             requested_by=user.id,
             extracted_text=extracted["text"],
-            generate_suggestions=bool(settings.LLM_API_KEY.strip()),
+            generate_suggestions=True,
         )
         document.status = "in_review"
         AuditService(db).record_event(

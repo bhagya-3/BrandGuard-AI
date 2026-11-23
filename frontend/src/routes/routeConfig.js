@@ -38,7 +38,8 @@ const pathOverrides = {
   'workspace/DepartmentsPage': '/workspace/departments',
   'workspace/InvitationsPage': '/workspace/invitations',
   'workspace/TeamMembersPage': '/workspace/team-members',
-  'workspace/WorkspacePage': '/workspace',
+'workspace/TeamMemberDetailsPage': '/workspace/team-members/:id',
+'workspace/WorkspacePage': '/workspace',
 }
 
 function kebabCase(value) {

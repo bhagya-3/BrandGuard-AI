@@ -1,4 +1,5 @@
 
+
 from fastapi import HTTPException, status
 
 
@@ -29,6 +30,7 @@ ROLE_PERMISSIONS = {
         "team:manage",
     },
     "admin": {"*"},
+    "global_admin": {"*"},
     "publisher": {
         "document:read",
         "approval:read",
@@ -36,6 +38,20 @@ ROLE_PERMISSIONS = {
         "publication:read",
     },
 }
+
+
+def has_global_admin_access(user) -> bool:
+    roles = getattr(user, "roles", [])
+
+    role_names = {
+        role if isinstance(role, str)
+        else getattr(role, "name", "")
+        for role in roles
+    }
+
+    return "global_admin" in {
+        name.lower() for name in role_names
+    }
 
 
 def has_permission(user, permission: str) -> bool:

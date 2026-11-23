@@ -1,3 +1,4 @@
+
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -5,6 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_db
+from app.core.permissions import has_global_admin_access, require_permission
 from app.models.approval import Approval
 from app.models.document import Document
 from app.models.finding import Finding
@@ -45,13 +47,19 @@ def list_approvals(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    approvals = (
-        db.query(Approval)
-        .join(Review, Approval.review_id == Review.id)
-        .filter(Review.organization_id == user.organization_id)
-        .order_by(Approval.requested_at.desc())
-        .all()
+    query = db.query(Approval).join(
+        Review, Approval.review_id == Review.id
     )
+
+    if not has_global_admin_access(user):
+        query = query.filter(
+            Review.organization_id == user.organization_id
+        )
+
+    approvals = query.order_by(
+        Approval.requested_at.desc()
+    ).all()
+
     return [_approval_response(approval) for approval in approvals]
 
 
@@ -65,17 +73,21 @@ def request_approval(
         Review.id == payload.review_id,
         Review.organization_id == user.organization_id,
     ).first()
+
     if not review:
         raise HTTPException(status_code=404, detail="Review not found.")
+
     unresolved = db.query(Finding).filter(
         Finding.review_id == review.id,
         Finding.status == "open",
     ).count()
+
     if unresolved:
         raise HTTPException(
             status_code=409,
             detail="Resolve or dismiss every finding before requesting approval.",
         )
+
     try:
         approval = ApprovalService(db).request_approval(
             review.id,
@@ -94,6 +106,7 @@ def request_approval(
         organization_id=user.organization_id,
         details={"review_id": review.id},
     )
+
     db.commit()
     db.refresh(approval)
     return _approval_response(approval)
@@ -106,17 +119,28 @@ def decide_approval(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    approval = (
+    require_permission(user, "approval:review")
+
+    query = (
         db.query(Approval)
         .join(Review, Approval.review_id == Review.id)
-        .filter(
-            Approval.id == approval_id,
-            Review.organization_id == user.organization_id,
-        )
-        .first()
+        .filter(Approval.id == approval_id)
     )
+
+    if not has_global_admin_access(user):
+        query = query.filter(
+            Review.organization_id == user.organization_id
+        )
+
+    approval = query.first()
+
     if not approval:
         raise HTTPException(status_code=404, detail="Approval not found.")
+
+    review = db.query(Review).filter(
+        Review.id == approval.review_id
+    ).first()
+
     try:
         approval = ApprovalService(db).decide(
             approval.id,
@@ -130,19 +154,28 @@ def decide_approval(
     document = db.query(Document).filter(
         Document.id == approval.document_id
     ).first()
+
     if document:
         document.status = (
-            "approved" if payload.decision == "approved" else "changes_requested"
+            "approved"
+            if payload.decision == "approved"
+            else "changes_requested"
         )
+
     approval.decided_at = datetime.now(timezone.utc)
+
     AuditService(db).record_event(
         action=f"approval.{payload.decision}",
         entity_type="approval",
         entity_id=approval.id,
         user_id=user.id,
-        organization_id=user.organization_id,
-        details={"review_id": approval.review_id, "decision_note": payload.decision_note},
+        organization_id=review.organization_id,
+        details={
+            "review_id": approval.review_id,
+            "decision_note": payload.decision_note,
+        },
     )
+
     db.commit()
     db.refresh(approval)
     return _approval_response(approval)

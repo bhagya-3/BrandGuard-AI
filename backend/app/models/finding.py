@@ -15,8 +15,10 @@ class Finding(Base):
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     review_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("reviews.id", ondelete="CASCADE"),
-        nullable=False, index=True
+        String(36),
+        ForeignKey("reviews.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     document_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("documents.id"), nullable=False
@@ -33,6 +35,17 @@ class Finding(Base):
     status: Mapped[str] = mapped_column(
         String(30), default="open", nullable=False
     )
+
+    suggestion_generation_status: Mapped[str] = mapped_column(
+    String(30),
+    default="pending",
+    server_default="pending",
+    nullable=False,
+)
+    suggestion_generation_message: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

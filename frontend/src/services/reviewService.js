@@ -1,3 +1,4 @@
+
 import { apiPatch, apiPost, apiRequest } from './apiClient.js'
 
 export function runReview(documentId) {
@@ -17,6 +18,16 @@ export function decideFinding(findingId, decision, suggestedText) {
     decision,
     suggested_text: suggestedText,
   })
+}
+
+export function decideSuggestion(findingId, suggestionId, decision, suggestedText) {
+  return apiPatch(
+    `/findings/${encodeURIComponent(findingId)}/suggestions/${encodeURIComponent(suggestionId)}/decision`,
+    {
+      decision,
+      suggested_text: suggestedText,
+    }
+  )
 }
 
 export function listComments(reviewId) {

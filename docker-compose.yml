@@ -109,11 +109,12 @@ services:
         condition: service_started
       clamav:
         condition: service_started
-
   backend:
     build:
       context: .
       dockerfile: infrastructure/docker/backend.Dockerfile
+    env_file:
+      - ./backend/.env
     environment:
       APP_NAME: BrandGuard AI
       DEBUG: "true"
@@ -126,7 +127,7 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in the root .env file}
       MINIO_BUCKET: brandguard-files
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in the root .env file}
-      FRONTEND_ORIGIN: http://localhost:5173,http://127.0.0.1:5173
+      FRONTEND_ORIGIN: http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174
       CLAMAV_HOST: clamav
       CLAMAV_PORT: "3310"
       CLAMAV_TIMEOUT: "60"

@@ -272,7 +272,7 @@ export function FileUploader({ onFile, busy = false, accept, maxSizeLabel = 'Max
   return (
     <div className="file-uploader">
       <label className="upload-dropzone">
-        <input type="file" accept={accept} disabled={busy} onChange={(event) => {
+        <input id="brandguard-upload-input" type="file" accept={accept} disabled={busy} onChange={(event) => {
           const file = event.target.files?.[0]
           console.log('[BrandGuard] File selected:', file?.name, file?.size)
           if (file) {
@@ -330,13 +330,169 @@ export function PendingApprovals({ approvals = [] }) {
   return <div className="compact-list">{pending.slice(0, 5).map((item) => <Link key={item.id} to={`/approvals/${item.id}`}><span><strong>{item.document_title || 'Approval request'}</strong><small>Requested {formatDateTime(item.requested_at || item.created_at)}</small></span><DocumentStatusBadge status={item.status} /></Link>)}{!pending.length && <p className="muted">No pending approvals.</p>}</div>
 }
 
-export function IssueCard({ finding, onDecision }) {
-  return <article className="finding-row">
-    <div className="finding-meta"><span className={`severity severity-${finding.severity}`}>{formatStatus(finding.severity || 'low')}</span><span>{formatStatus(finding.category || 'general')}</span></div>
-    <h3>{finding.title || 'Review finding'}</h3><p>{finding.description}</p>
-    <EvidencePanel evidence={finding.evidence || []} />
-    {onDecision && finding.status === 'open' && <div className="finding-actions"><button className="button button-secondary" onClick={() => onDecision(finding, 'dismissed')}>Dismiss</button><button className="button button-primary" onClick={() => onDecision(finding, 'resolved')}>Resolve</button></div>}
-  </article>
+export function IssueCard({
+  finding,
+  onDecision,
+  onSuggestionDecision,
+  busy = false,
+}) {
+  const [editingSuggestion, setEditingSuggestion] = useState(null)
+  const [editedText, setEditedText] = useState("")
+
+  const suggestions = finding.suggestions || []
+  const generationStatus = finding.suggestion_generation_status
+  const generationMessage = finding.suggestion_generation_message
+
+  function handleEdit(suggestion) {
+    setEditedText(suggestion.suggested_text || "")
+    setEditingSuggestion(suggestion.id)
+  }
+
+  function submitEdit(suggestion) {
+    if (!editedText.trim()) return
+    onSuggestionDecision?.(finding, suggestion, "edited", editedText.trim())
+    setEditingSuggestion(null)
+  }
+
+  return (
+    <article className="finding-row">
+      <div className="finding-meta">
+        <span className={`severity severity-${finding.severity}`}>
+          {formatStatus(finding.severity || "low")}
+        </span>
+        <span>{formatStatus(finding.category || "general")}</span>
+        <span>{formatStatus(finding.status || "open")}</span>
+      </div>
+
+      <h3>{finding.title || "Review finding"}</h3>
+      <p>{finding.description || "No additional description provided."}</p>
+
+      <EvidencePanel evidence={finding.evidence || []} />
+
+      <section className="suggestion-box">
+        <h3>Correction suggestions</h3>
+
+        {suggestions.length > 0 ? (
+          suggestions.map((suggestion) => (
+            <div key={suggestion.id} className="suggestion-item">
+              <p><strong>Original text</strong></p>
+              <pre>{suggestion.original_text || "Original text unavailable."}</pre>
+
+              <p><strong>Suggested correction</strong></p>
+              <pre>{suggestion.suggested_text || "No suggested text provided."}</pre>
+
+              {suggestion.rationale && <p>{suggestion.rationale}</p>}
+
+              <p className="muted">
+                Suggestion status: {formatStatus(suggestion.status || "pending")}
+              </p>
+
+              {suggestion.status === "pending" && onSuggestionDecision && (
+                <div className="finding-actions">
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    disabled={busy}
+                    onClick={() =>
+                      onSuggestionDecision(finding, suggestion, "accepted")
+                    }
+                  >
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    disabled={busy}
+                    onClick={() => handleEdit(suggestion)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    disabled={busy}
+                    onClick={() =>
+                      onSuggestionDecision(finding, suggestion, "rejected")
+                    }
+                  >
+                    Reject
+                  </button>
+                </div>
+              )}
+
+              {editingSuggestion === suggestion.id && suggestion.status === "pending" && (
+                <div className="suggestion-edit">
+                  <label htmlFor={`suggestion-edit-${suggestion.id}`}>
+                    Edit proposed correction
+                  </label>
+                  <textarea
+                    id={`suggestion-edit-${suggestion.id}`}
+                    value={editedText}
+                    onChange={(event) => setEditedText(event.target.value)}
+                    maxLength={50000}
+                    rows={4}
+                  />
+                  <div className="finding-actions">
+                    <button
+                      type="button"
+                      className="button button-primary"
+                      disabled={busy || !editedText.trim()}
+                      onClick={() => submitEdit(suggestion)}
+                    >
+                      Save edited suggestion
+                    </button>
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      disabled={busy}
+                      onClick={() => setEditingSuggestion(null)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        ) : (
+          <div>
+            <p>
+              {generationMessage ||
+                (generationStatus === "unavailable"
+                  ? "AI correction generation is unavailable. A reviewer can make the correction manually."
+                  : generationStatus === "insufficient_context"
+                    ? "There is not enough supporting document text to generate a correction. Please review manually."
+                    : "No correction suggestion is available for this finding.")}
+            </p>
+            <p className="muted">
+              Generation status: {formatStatus(generationStatus || "not available")}
+            </p>
+          </div>
+        )}
+      </section>
+
+      {onDecision && finding.status === "open" && (
+        <div className="finding-actions">
+          <button
+            type="button"
+            className="button button-secondary"
+            disabled={busy}
+            onClick={() => onDecision(finding, "dismissed")}
+          >
+            Dismiss finding
+          </button>
+          <button
+            type="button"
+            className="button button-primary"
+            disabled={busy}
+            onClick={() => onDecision(finding, "resolved")}
+          >
+            Resolve finding
+          </button>
+        </div>
+      )}
+    </article>
+  )
 }
 
 export function IssueFilters({ value, onChange }) {
@@ -347,7 +503,79 @@ export function IssueFilters({ value, onChange }) {
 }
 
 export function EvidencePanel({ evidence = [] }) {
-  return <section className="evidence-panel"><h3>Evidence</h3>{evidence.length ? evidence.map((item, index) => <blockquote key={item.source_version_id || index}><p>{item.quote || item.quoted_text || item.source_reference}</p><small>{item.source_title || item.source_id || item.source_reference || 'Approved source'}{item.relevance_score != null ? ` · ${Math.round(item.relevance_score * 100)}% match` : ''}</small></blockquote>) : <p className="muted">No supporting evidence is attached.</p>}</section>
+  // Remove duplicate evidence based on quotation and source.
+  const uniqueEvidence = evidence.filter((item, index, array) => {
+    const quote = (
+      item.quote ||
+      item.quoted_text ||
+      item.source_reference ||
+      ''
+    ).trim();
+
+    const source = (
+      item.source_title ||
+      item.source_id ||
+      item.source_reference ||
+      'Approved source'
+    ).trim();
+
+    const firstIndex = array.findIndex((candidate) => {
+      const candidateQuote = (
+        candidate.quote ||
+        candidate.quoted_text ||
+        candidate.source_reference ||
+        ''
+      ).trim();
+
+      const candidateSource = (
+        candidate.source_title ||
+        candidate.source_id ||
+        candidate.source_reference ||
+        'Approved source'
+      ).trim();
+
+      return (
+        candidateQuote === quote &&
+        candidateSource === source
+      );
+    });
+
+    return firstIndex === index;
+  });
+
+  return (
+    <section className="evidence-panel">
+      <h3>Evidence</h3>
+
+      {uniqueEvidence.length > 0 ? (
+        uniqueEvidence.map((item, index) => (
+          <blockquote
+            key={`${item.source_version_id || 'evidence'}-${index}`}
+          >
+            <p>
+              {item.quote ||
+                item.quoted_text ||
+                item.source_reference}
+            </p>
+
+            <small>
+              {item.source_title ||
+                item.source_id ||
+                item.source_reference ||
+                'Approved source'}
+
+              {item.relevance_score != null &&
+                ` · ${Math.round(item.relevance_score * 100)}% match`}
+            </small>
+          </blockquote>
+        ))
+      ) : (
+        <p className="muted">
+          No supporting evidence is attached.
+        </p>
+      )}
+    </section>
+  );
 }
 
 export function ConfidenceIndicator({ value }) {
@@ -375,17 +603,56 @@ export function ReviewComments({ comments = [], onSubmit, disabled = false }) {
   </section>
 }
 
-export function ReviewWorkspace({ review, comments = [], onComment, onDecision, busy = false }) {
+export function ReviewWorkspace({
+  review,
+  comments = [],
+  onComment,
+  onDecision,
+  onSuggestionDecision,
+  busy = false,
+}) {
   const findings = review?.findings || []
-  return <div className="review-layout">
-    <section className="content-card findings-card">
-      <header className="card-heading"><div><h2>Review findings</h2><p>{findings.length} finding(s) · Human review is required before publication.</p></div><DocumentStatusBadge status={review?.status} /></header>
-      {findings.length
-        ? findings.map((finding) => <IssueCard key={finding.id} finding={finding} onDecision={onDecision && !busy ? onDecision : undefined} />)
-        : <div className="empty-state"><h3>No findings recorded</h3><p>This review has no findings. Continue to approval when appropriate.</p></div>}
-    </section>
-    <aside><ReviewComments comments={comments} onSubmit={onComment} disabled={busy} /></aside>
-  </div>
+
+  return (
+    <div className="review-layout">
+      <section className="content-card findings-card">
+        <header className="card-heading">
+          <div>
+            <h2>Review findings</h2>
+            <p>
+              {findings.length} finding(s) ? Human approval is required before publication.
+            </p>
+          </div>
+          <DocumentStatusBadge status={review?.status} />
+        </header>
+
+        {findings.length ? (
+          findings.map((finding) => (
+            <IssueCard
+              key={finding.id}
+              finding={finding}
+              onDecision={onDecision}
+              onSuggestionDecision={onSuggestionDecision}
+              busy={busy}
+            />
+          ))
+        ) : (
+          <div className="empty-state">
+            <h3>No findings recorded</h3>
+            <p>This review has no findings. Continue to approval when appropriate.</p>
+          </div>
+        )}
+      </section>
+
+      <aside>
+        <ReviewComments
+          comments={comments}
+          onSubmit={onComment}
+          disabled={busy}
+        />
+      </aside>
+    </div>
+  )
 }
 
 export function ApprovalStatus({ status }) {

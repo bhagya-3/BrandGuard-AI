@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
+﻿import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { apiPost, apiRequest } from '../services/apiClient.js'
 import { decideApproval } from '../services/approvalService.js'
@@ -7,6 +7,7 @@ import { getDocument, listDocuments, uploadDocument } from '../services/document
 import {
   addComment,
   decideFinding,
+  decideSuggestion,
   getReview,
   listComments,
   listReviews,
@@ -31,7 +32,6 @@ import {
   ActivityChart,
   DocumentMetadata,
   DocumentStatusBadge,
-  EvidencePanel,
   FileUploader,
   LoadingSpinner,
   PageHeader,
@@ -60,7 +60,7 @@ const publicCopy = {
   'public/HowItWorksPage': {
     title: 'A practical review workflow',
     description: 'Move from an uploaded draft to an accountable review without silently changing or publishing content.',
-    bullets: ['Upload a supported document', 'Inspect findings and their supporting context', 'Resolve issues and request another person’s approval'],
+    bullets: ['Upload a supported document', 'Inspect findings and their supporting context', 'Resolve issues and request another personâ€™s approval'],
   },
   'public/SecurityInfoPage': {
     title: 'Security is part of the workflow',
@@ -126,7 +126,12 @@ async function loadPageData(pageKey, entityId) {
     }
     return listSources()
   }
-  if (group === 'workspace') return apiRequest('/workspaces/')
+  if (group === 'workspace') {
+  if (pageKey.includes('TeamMemberDetails') && entityId) {
+    return apiRequest(`/users/${encodeURIComponent(entityId)}`)
+  }
+  return apiRequest('/users/')
+}
   if (group === 'analytics') return getWorkspaceAnalytics()
   if (group === 'dashboard') {
     const [documents, reviews, approvals] = await Promise.all([listDocuments(), listReviews(), apiRequest('/approvals/')])
@@ -163,14 +168,52 @@ function entityHref(group, row) {
   if (group === 'review') return `/reviews/${row.id}`
   if (group === 'approvals') return `/approvals/${row.id}`
   if (group === 'sources') return `/sources/${row.id}`
+  if (group === 'workspace') return `/workspace/team-members/${row.id}`
   return null
 }
 
 function EmptyState({ title, text, action }) {
-  return <section className="empty-state"><span className="empty-icon">✳</span><h2>{title}</h2><p>{text}</p>{action}</section>
+  return <section className="empty-state"><span className="empty-icon">âœ³</span><h2>{title}</h2><p>{text}</p>{action}</section>
 }
 
 function DataTable({ rows, group, onRunReview, onApprovalDecision, busy }) {
+    if (group === 'workspace') {
+    return (
+      <div className="table-scroll">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Roles</th>
+              <th>Status</th>
+              <th>Joined</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((member) => (
+              <tr key={member.id}>
+                <td>
+  <Link
+    className="table-primary-link"
+    to={`/workspace/team-members/${member.id}`}
+  >
+    <strong>{member.full_name || 'Unnamed member'}</strong>
+  </Link>
+</td>
+                <td>{member.email}</td>
+                <td>{(member.roles || []).join(', ') || 'No role assigned'}</td>
+                <td>
+                  <DocumentStatusBadge status={member.is_active ? 'active' : 'inactive'} />
+                </td>
+                <td>{formatDateTime(member.created_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
   if (!rows.length) return <EmptyState title="Nothing here yet" text="New workspace activity will appear here when it is available." />
   const columns = group === 'documents'
     ? ['Content', 'Status', 'Findings', 'Updated']
@@ -190,7 +233,7 @@ function DataTable({ rows, group, onRunReview, onApprovalDecision, busy }) {
       return <tr key={row.id || title}>
         <td>{href ? <Link className="table-primary-link" to={href}><strong>{title}</strong></Link> : <strong>{title}</strong>}<small>{row.original_filename || row.description || row.source_type || row.requester || ''}</small></td>
         <td><DocumentStatusBadge status={row.status} /></td>
-        <td>{group === 'documents' ? row.finding_count ?? '—' : group === 'approvals' ? row.requester || '—' : group === 'sources' ? formatStatus(row.source_type || 'reference') : (row.findings || []).length || '—'}</td>
+        <td>{group === 'documents' ? row.finding_count ?? 'â€”' : group === 'approvals' ? row.requester || 'â€”' : group === 'sources' ? formatStatus(row.source_type || 'reference') : (row.findings || []).length || 'â€”'}</td>
         <td>{formatDateTime(row.updated_at || row.requested_at || row.created_at)}</td>
         <td><div className="table-actions">
           {group === 'documents' && <button className="text-button" disabled={busy} onClick={() => onRunReview(row)}>Run review</button>}
@@ -198,7 +241,7 @@ function DataTable({ rows, group, onRunReview, onApprovalDecision, busy }) {
             <button className="text-button" disabled={busy} onClick={() => onApprovalDecision(row, 'rejected')}>Request changes</button>
             <button className="text-button" disabled={busy} onClick={() => onApprovalDecision(row, 'approved')}>Approve</button>
           </>}
-          {href && <Link className="row-open" to={href} aria-label={`Open ${title}`}>→</Link>}
+          {href && <Link className="row-open" to={href} aria-label={`Open ${title}`}>â†’</Link>}
         </div></td>
       </tr>
     })}</tbody>
@@ -281,7 +324,7 @@ function AuthPage({ pageKey }) {
   return <section className="auth-card">
     <span className="eyebrow">SECURE WORKSPACE</span>
     <h1>{title}</h1>
-    <p className="muted">{isRegister ? 'Create an organization account to start reviewing content.' : isForgot ? 'Enter your email and we will request a reset link.' : isReset ? 'Use the reset token from your email to change your password.' : isVerify ? 'Use the verification token sent to your email address.' : isTwoFactor ? 'Enter the verification code from your authenticator.' : isInvitation ? 'Enter your invitation token to join the workspace.' : 'Sign in to continue to your organization’s review workspace.'}</p>
+    <p className="muted">{isRegister ? 'Create an organization account to start reviewing content.' : isForgot ? 'Enter your email and we will request a reset link.' : isReset ? 'Use the reset token from your email to change your password.' : isVerify ? 'Use the verification token sent to your email address.' : isTwoFactor ? 'Enter the verification code from your authenticator.' : isInvitation ? 'Enter your invitation token to join the workspace.' : 'Sign in to continue to your organizationâ€™s review workspace.'}</p>
     {(formError || authError) && <div className="notice notice-error" role="alert">{formError || authError}</div>}
     {successMessage && <div className="notice notice-success" role="status">{successMessage}</div>}
     <form className="auth-form" onSubmit={submit}>
@@ -295,7 +338,7 @@ function AuthPage({ pageKey }) {
       {isTwoFactor && <label>Verification code<input name="code" inputMode="numeric" autoComplete="one-time-code" minLength={6} maxLength={8} required /></label>}
       {(isRegister || isReset || isInvitation || !isForgot && !isVerify && !isTwoFactor) && <label>Password<input name="password" type="password" autoComplete={isRegister || isReset || isInvitation ? 'new-password' : 'current-password'} minLength={isRegister || isReset || isInvitation ? 12 : 1} required /></label>}
       {isRegister && <small className="muted">Use at least 12 characters.</small>}
-      <button className="button button-primary full-width" disabled={loading}>{loading ? 'Please wait…' : isRegister ? 'Create account' : isForgot ? 'Request reset link' : isReset ? 'Update password' : isVerify ? 'Verify email' : isTwoFactor ? 'Verify code' : isInvitation ? 'Accept invitation' : 'Sign in'}</button>
+      <button className="button button-primary full-width" disabled={loading}>{loading ? 'Please waitâ€¦' : isRegister ? 'Create account' : isForgot ? 'Request reset link' : isReset ? 'Update password' : isVerify ? 'Verify email' : isTwoFactor ? 'Verify code' : isInvitation ? 'Accept invitation' : 'Sign in'}</button>
     </form>
     {(isRegister || pageKey.endsWith('LoginPage')) && <p className="auth-caption">{isRegister ? 'Already have an account?' : 'New to BrandGuard?'} <Link to={isRegister ? '/login' : '/register'}>{isRegister ? 'Sign in' : 'Create an account'}</Link></p>}
     {!isRegister && pageKey.endsWith('LoginPage') && <Link className="text-button auth-switch" to="/forgot-password">Forgot your password?</Link>}
@@ -325,15 +368,15 @@ function PublicPage({ pageKey }) {
         <div className="product-preview" aria-label="Preview of the BrandGuard content review dashboard">
           <div className="preview-topbar"><span className="preview-brand-mark">B</span><strong>Brand workspace</strong><span className="preview-avatar">JD</span></div>
           <div className="preview-body">
-            <div className="preview-heading"><div><small>MONDAY, OCTOBER 14</small><strong>Good morning, Jordan</strong></div><span className="preview-status">● All systems clear</span></div>
+            <div className="preview-heading"><div><small>MONDAY, OCTOBER 14</small><strong>Good morning, Jordan</strong></div><span className="preview-status">â— All systems clear</span></div>
             <div className="preview-stats">
-              <div><small>Content reviewed</small><strong>24</strong><span>↗ 12% this week</span></div>
+              <div><small>Content reviewed</small><strong>24</strong><span>â†— 12% this week</span></div>
               <div><small>Awaiting approval</small><strong>03</strong><span>Across 2 campaigns</span></div>
             </div>
             <div className="preview-reviews">
-              <div className="preview-section-heading"><strong>Recent reviews</strong><span>View all&nbsp; →</span></div>
-              <div className="preview-review-row"><span className="preview-file-icon">▤</span><span><strong>Autumn campaign</strong><small>Updated 12 minutes ago</small></span><span className="preview-pill">In review</span></div>
-              <div className="preview-review-row"><span className="preview-file-icon">▤</span><span><strong>Product launch email</strong><small>Approved yesterday</small></span><span className="preview-pill preview-pill-approved">Approved</span></div>
+              <div className="preview-section-heading"><strong>Recent reviews</strong><span>View all&nbsp; â†’</span></div>
+              <div className="preview-review-row"><span className="preview-file-icon">â–¤</span><span><strong>Autumn campaign</strong><small>Updated 12 minutes ago</small></span><span className="preview-pill">In review</span></div>
+              <div className="preview-review-row"><span className="preview-file-icon">â–¤</span><span><strong>Product launch email</strong><small>Approved yesterday</small></span><span className="preview-pill preview-pill-approved">Approved</span></div>
             </div>
           </div>
         </div>
@@ -347,19 +390,19 @@ function PublicPage({ pageKey }) {
       </section>
       <section className="landing-intro">
         <div className="intro-art">
-          <div className="intro-card"><span className="intro-card-label">REVIEW PRINCIPLE</span><strong>Evidence first.<br />People decide.</strong><span className="intro-card-check">✓</span></div>
+          <div className="intro-card"><span className="intro-card-label">REVIEW PRINCIPLE</span><strong>Evidence first.<br />People decide.</strong><span className="intro-card-check">âœ“</span></div>
           <span className="intro-number">01 / 03</span>
         </div>
         <div className="intro-copy">
           <span className="eyebrow">FROM FIRST DRAFT TO FINAL SIGN-OFF</span>
           <h2>Make every review<br />a little more <span>certain.</span></h2>
-          <p>Bring your content, brand guidance, and reviewers together. BrandGuard surfaces potential issues and supporting evidence—your team stays in control of every correction and approval.</p>
+          <p>Bring your content, brand guidance, and reviewers together. BrandGuard surfaces potential issues and supporting evidenceâ€”your team stays in control of every correction and approval.</p>
           <ul className="feature-list">
-            <li><span>✓</span>Review findings alongside source evidence</li>
-            <li><span>✓</span>Resolve comments and track approval decisions</li>
-            <li><span>✓</span>Keep an audit trail from draft to sign-off</li>
+            <li><span>âœ“</span>Review findings alongside source evidence</li>
+            <li><span>âœ“</span>Resolve comments and track approval decisions</li>
+            <li><span>âœ“</span>Keep an audit trail from draft to sign-off</li>
           </ul>
-          <Link className="text-button" to="/features">Explore the workflow <span aria-hidden="true">→</span></Link>
+          <Link className="text-button" to="/features">Explore the workflow <span aria-hidden="true">â†’</span></Link>
         </div>
       </section>
       <section className="landing-cta"><span className="eyebrow">READY WHEN YOUR TEAM IS</span><h2>Put your brand standards<br />to work.</h2><Link className="button button-primary" to="/register">Create an account</Link></section>
@@ -370,8 +413,8 @@ function PublicPage({ pageKey }) {
     <h1>{content.title}</h1>
     <p className="marketing-description">{content.description}</p>
     {isContact
-      ? <section className="content-card contact-card"><h2>Contact your workspace team</h2><p>For access, deployment, or data-retention questions, contact your organization’s BrandGuard administrator.</p><Link className="button button-primary" to="/login">Sign in to your workspace</Link></section>
-      : <ul className="feature-list">{content.bullets.map((item) => <li key={item}><span aria-hidden="true">✓</span>{item}</li>)}</ul>}
+      ? <section className="content-card contact-card"><h2>Contact your workspace team</h2><p>For access, deployment, or data-retention questions, contact your organizationâ€™s BrandGuard administrator.</p><Link className="button button-primary" to="/login">Sign in to your workspace</Link></section>
+      : <ul className="feature-list">{content.bullets.map((item) => <li key={item}><span aria-hidden="true">âœ“</span>{item}</li>)}</ul>}
     <div className="marketing-actions"><Link className="button button-primary" to="/register">Get started</Link><Link className="button button-secondary" to="/login">Sign in</Link></div>
   </div>
 }
@@ -416,7 +459,7 @@ function SourceForm({ onSave, busy }) {
       <label>Type<select name="source_type"><option value="guideline">Brand guideline</option><option value="approved_claim">Approved claim</option><option value="terminology">Terminology</option><option value="reference">Reference</option></select></label>
       <label>Description<input name="description" maxLength={2000} /></label>
       <label>Source content<textarea name="content" maxLength={100000} rows={6} required /></label>
-      <button className="button button-primary" disabled={busy}>{busy ? 'Saving…' : 'Save source'}</button>
+      <button className="button button-primary" disabled={busy}>{busy ? 'Savingâ€¦' : 'Save source'}</button>
     </form>
   </section>
 }
@@ -950,6 +993,41 @@ export default function PageView({ pageKey }) {
     if (group === 'dashboard' && pageKey.endsWith('NotificationsPage')) setData(notifications)
   }, [group, pageKey, notifications])
 
+  async function handleToggleMemberStatus() {
+    if (!data?.id || busy) return
+
+    const nextIsActive = !data.is_active
+    const action = nextIsActive ? 'activate' : 'deactivate'
+
+    const confirmed = window.confirm(
+      `Are you sure you want to ${action} ${data.full_name || 'this member'}?`
+    )
+
+    if (!confirmed) return
+
+    setBusy(true)
+    setError('')
+
+    try {
+      await apiRequest(
+        `/users/${encodeURIComponent(data.id)}/status?is_active=${nextIsActive}`,
+        { method: 'PATCH' }
+      )
+
+      addNotification({
+        title: nextIsActive ? 'Member activated' : 'Member deactivated',
+        message: `${data.full_name || 'Member'} account status was updated.`,
+        href: `/workspace/team-members/${data.id}`,
+      })
+
+      await reload()
+    } catch (requestError) {
+      setError(requestError.message || 'Could not update member status.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const rows = useMemo(() => rowsFrom(data).filter((row) => {
     const haystack = [row.title, row.document_title, row.original_filename, row.description, row.status, row.source_type]
       .filter(Boolean).join(' ').toLowerCase()
@@ -1035,18 +1113,36 @@ export default function PageView({ pageKey }) {
     }
   }
 
-  async function handleFindingDecision(finding, decision) {
-    setBusy(true)
-    setError('')
-    try {
-      await decideFinding(finding.id, decision)
-      await reload()
-    } catch (requestError) {
-      setError(requestError.message || 'The finding could not be updated.')
-    } finally {
-      setBusy(false)
-    }
+async function handleFindingDecision(finding, decision) {
+  setBusy(true)
+  setError('')
+  try {
+    await decideFinding(finding.id, decision)
+    await reload()
+  } catch (requestError) {
+    setError(requestError.message || 'The finding could not be updated.')
+  } finally {
+    setBusy(false)
   }
+}
+
+async function handleSuggestionDecision(finding, suggestion, decision, suggestedText) {
+  setBusy(true)
+  setError('')
+  try {
+    await decideSuggestion(
+      finding.id,
+      suggestion.id,
+      decision,
+      suggestedText
+    )
+    await reload()
+  } catch (requestError) {
+    setError(requestError.message || 'The suggestion could not be updated.')
+  } finally {
+    setBusy(false)
+  }
+}
 
   async function handleComment(body) {
     if (!data?.id) return
@@ -1080,14 +1176,14 @@ export default function PageView({ pageKey }) {
     const isMaintenance = pageKey.endsWith('MaintenancePage')
     const isServerError = pageKey.endsWith('ServerErrorPage')
     const isUnauthorized = pageKey.endsWith('UnauthorizedPage')
-    const heading = isMaintenance ? 'We’ll be back soon' : isServerError ? 'Something went wrong' : isUnauthorized ? 'Access denied' : 'Page not found'
+    const heading = isMaintenance ? 'Weâ€™ll be back soon' : isServerError ? 'Something went wrong' : isUnauthorized ? 'Access denied' : 'Page not found'
     const text = isMaintenance ? 'BrandGuard is temporarily unavailable for maintenance.'
       : isServerError ? 'The request could not be completed. Please try again or contact your workspace administrator.'
         : isUnauthorized ? 'Your account does not have permission to access this page.'
           : 'The page may have moved or the link may be incorrect.'
     return <EmptyState title={heading} text={text} action={<Link className="button button-primary" to="/dashboard">Go to workspace</Link>} />
   }
-  
+
 if (group === 'settings') {
   return (
     <>
@@ -1120,6 +1216,85 @@ if (group === 'settings') {
 
   if (error && !data) return <><PageHeader title={title} description={description} /><div className="notice notice-error" role="alert">{error}<button className="text-button" onClick={reload}>Retry</button></div></>
 
+  if (group === 'approvals' && pageKey.includes('ApprovalDetailsPage') && detail) {
+    return (
+      <>
+        <PageHeader
+          title={data.document_title || 'Approval details'}
+          description="Review the approval request and its decision history."
+          action={
+            <Link className="button button-secondary" to="/approvals">
+              Back to Approval Inbox
+            </Link>
+          }
+        />
+
+        {error && <div className="notice notice-error" role="alert">{error}</div>}
+
+        <div className="details-grid">
+          <section className="content-card">
+            <h2>Request information</h2>
+            <p><strong>Document:</strong> {data.document_title || 'Untitled'}</p>
+            <p><strong>Requester:</strong> {data.requester || 'Unknown'}</p>
+            <p><strong>Approval ID:</strong> {data.id}</p>
+            <p><strong>Review ID:</strong> {data.review_id}</p>
+            <p><strong>Requested:</strong> {formatDateTime(data.requested_at)}</p>
+          </section>
+
+          <section className="content-card">
+            <h2>Decision details</h2>
+            <p>
+              <strong>Status:</strong>{' '}
+              <DocumentStatusBadge status={data.status} />
+            </p>
+            <p><strong>Decision date:</strong> {formatDateTime(data.decided_at)}</p>
+            <p><strong>Decision note:</strong></p>
+            <p>{data.decision_note || 'No decision note provided.'}</p>
+
+            {data.document_id && (
+              <p>
+                <Link to={`/documents/${data.document_id}`}>
+                  Open document
+                </Link>
+              </p>
+            )}
+
+            {data.review_id && (
+              <p>
+                <Link to={`/reviews/${data.review_id}`}>
+                  Open review
+                </Link>
+              </p>
+            )}
+          </section>
+        </div>
+
+        {data.status === 'pending' && (
+          <section className="content-card">
+            <h2>Review this request</h2>
+            <p>Choose whether to approve this request or request changes.</p>
+            <div className="button-group">
+              <button
+                className="button button-secondary"
+                disabled={busy}
+                onClick={() => handleApprovalDecision(data, 'rejected')}
+              >
+                Request Changes
+              </button>
+              <button
+                className="button button-primary"
+                disabled={busy}
+                onClick={() => handleApprovalDecision(data, 'approved')}
+              >
+                Approve
+              </button>
+            </div>
+          </section>
+        )}
+      </>
+    )
+  }
+
   if (isDashboard && data) {
     const documents = data.documents || []
     const reviews = data.reviews || []
@@ -1130,7 +1305,7 @@ if (group === 'settings') {
       <PageHeader title={title} description={description} action={<Link className="button button-primary" to="/documents/upload">+ New review</Link>} />
       {error && <div className="notice notice-error" role="alert">{error}</div>}
       <div className="summary-grid"><StatCard label="Documents" value={documents.length} detail="In this workspace" /><StatCard label="Reviews" value={reviews.length} detail="Completed and in progress" /><StatCard label="Open findings" value={findings} detail="Across available reviews" /><StatCard label="Pending approvals" value={pending} detail="Awaiting a decision" /></div>
-      <section id="upload-content"className="content-card"><header className="card-heading"><div><h2>Recent documents</h2><p>Content recently added to your workspace</p></div><Link className="text-button" to="/documents">All documents →</Link></header><DataTable rows={documents.slice(0, 5)} group="documents" onRunReview={handleRunReview} busy={busy} /></section>
+      <section id="upload-content"className="content-card"><header className="card-heading"><div><h2>Recent documents</h2><p>Content recently added to your workspace</p></div><Link className="text-button" to="/documents">All documents â†’</Link></header><DataTable rows={documents.slice(0, 5)} group="documents" onRunReview={handleRunReview} busy={busy} /></section>
       <section  id="upload-content"className="content-card"><header className="card-heading"><div><h2>Review activity</h2><p>Recent reviews recorded by the API</p></div></header><ActivityChart data={Object.entries(documents.reduce((counts, item) => { counts[formatStatus(item.status)] = (counts[formatStatus(item.status)] || 0) + 1; return counts }, {})).map(([label, value]) => ({ label, value }))} /></section>
     </>
   }
@@ -1148,19 +1323,77 @@ if (group === 'settings') {
     return <><PageHeader title={title} description="Updates generated by actions in this browser." action={<button className="button button-secondary" onClick={markAllRead}>Mark all read</button>} /><section className="content-card">{notifications.length ? notifications.map((item) => <article className="notification-item" key={item.id}><div><strong>{item.title}</strong><p>{item.message}</p><small>{formatDateTime(item.created_at)}</small></div><span>{item.read ? 'Read' : 'Unread'}</span></article>) : <EmptyState title="No notifications" text="Workspace updates will appear here." />}</section></>
   }
 
+if (group === 'workspace' && pageKey.includes('TeamMemberDetailsPage') && detail) {
+  return (
+    <>
+      <PageHeader
+        title={data.full_name || 'Member details'}
+        description="Workspace member profile and account information."
+       action={
+  <div className="button-group">
+    <button
+      className={`button ${data.is_active ? 'button-danger' : 'button-primary'}`}
+      onClick={handleToggleMemberStatus}
+      disabled={busy}
+    >
+      {busy
+        ? 'Updating...'
+        : data.is_active
+          ? 'Deactivate member'
+          : 'Activate member'}
+    </button>
+
+    <Link className="button button-secondary" to="/workspace/team-members">
+      Back to team members
+    </Link>
+  </div>
+}
+      />
+{error && <div className="notice notice-error" role="alert">{error}</div>}
+      <div className="details-grid">
+        <section className="content-card">
+          <h2>Personal information</h2>
+          <p><strong>Full name:</strong> {data.full_name || 'Not available'}</p>
+          <p><strong>Email:</strong> {data.email}</p>
+          <p><strong>Member ID:</strong> {data.id}</p>
+        </section>
+
+        <section className="content-card">
+          <h2>Account information</h2>
+          <p><strong>Roles:</strong> {(data.roles || []).join(', ') || 'No role assigned'}</p>
+          <p>
+            <strong>Account status:</strong>{' '}
+            <DocumentStatusBadge status={data.is_active ? 'active' : 'inactive'} />
+          </p>
+          <p><strong>Email verified:</strong> {data.is_verified ? 'Yes' : 'No'}</p>
+          <p><strong>Joined:</strong> {formatDateTime(data.created_at)}</p>
+          <p><strong>Last updated:</strong> {formatDateTime(data.updated_at)}</p>
+        </section>
+      </div>
+    </>
+  )
+}
+
   if (group === 'review' && detail) {
     const unresolved = (data.findings || []).filter((finding) => finding.status === 'open')
     return <>
-      <PageHeader title={data.document_title || `${title} #${String(data.id).slice(0, 8)}`} description={`${formatStatus(data.status)} · ${(data.findings || []).length} finding(s)`} action={<button className="button button-primary" disabled={busy || unresolved.length > 0} onClick={handleRequestApproval}>{unresolved.length ? `Resolve ${unresolved.length} finding(s)` : 'Request approval'}</button>} />
+      <PageHeader title={data.document_title || `${title} #${String(data.id).slice(0, 8)}`} description={`${formatStatus(data.status)} Â· ${(data.findings || []).length} finding(s)`} action={<button className="button button-primary" disabled={busy || unresolved.length > 0} onClick={handleRequestApproval}>{unresolved.length ? `Resolve ${unresolved.length} finding(s)` : 'Request approval'}</button>} />
       {error && <div className="notice notice-error" role="alert">{error}</div>}
-      <ReviewWorkspace review={data} comments={comments} onComment={handleComment} onDecision={handleFindingDecision} busy={busy} />
+      <ReviewWorkspace
+  review={data}
+  comments={comments}
+  onComment={handleComment}
+  onDecision={handleFindingDecision}
+  onSuggestionDecision={handleSuggestionDecision}
+  busy={busy}
+/>
 
     </>
   }
 
   if (group === 'documents' && detail) {
     return <>
-      <PageHeader title={data.title || data.original_filename} description={`${formatStatus(data.status)} · Updated ${formatDateTime(data.updated_at)}`} action={<button className="button button-primary" disabled={busy} onClick={() => handleRunReview(data)}>Run review</button>} />
+      <PageHeader title={data.title || data.original_filename} description={`${formatStatus(data.status)} Â· Updated ${formatDateTime(data.updated_at)}`} action={<button className="button button-primary" disabled={busy} onClick={() => handleRunReview(data)}>Run review</button>} />
       {error && <div className="notice notice-error" role="alert">{error}</div>}
       <div className="details-grid"><section className="content-card"><h2>Document details</h2><DocumentMetadata document={data} /></section><section className="content-card"><h2>Review status</h2><p><DocumentStatusBadge status={data.latest_review_status || data.status} /></p>{data.latest_review_id && <Link className="button button-secondary" to={`/reviews/${data.latest_review_id}`}>Open latest review</Link>}<p className="muted">Review findings and approval decisions are stored separately from the original upload.</p></section></div>
     </>
@@ -1173,7 +1406,7 @@ if (group === 'settings') {
       <section className="content-card">
         <header className="card-heading"><div><h2>Source versions</h2><p>Only approved versions can be used as evidence in a review.</p></div><DocumentStatusBadge status={data.status} /></header>
         {(data.versions || []).length
-          ? <div className="source-list">{data.versions.map((version) => <article className="source-item" key={version.id}><div><h3>Version {version.version_number || version.version || '—'}</h3><p>{version.description || version.content || 'Source version'}</p><small>{formatDateTime(version.created_at)}</small></div><DocumentStatusBadge status={version.status} />{version.status !== 'approved' && <button className="button button-secondary" disabled={busy} onClick={() => handleApproveSource(data.id, version.id)}>Verify version</button>}</article>)}</div>
+          ? <div className="source-list">{data.versions.map((version) => <article className="source-item" key={version.id}><div><h3>Version {version.version_number || version.version || 'â€”'}</h3><p>{version.description || version.content || 'Source version'}</p><small>{formatDateTime(version.created_at)}</small></div><DocumentStatusBadge status={version.status} />{version.status !== 'approved' && <button className="button button-secondary" disabled={busy} onClick={() => handleApproveSource(data.id, version.id)}>Verify version</button>}</article>)}</div>
           : <EmptyState title="No versions available" text="Add a version before this source can be verified." />}
       </section>
     </>
@@ -1191,20 +1424,36 @@ if (group === 'settings') {
   description={description}
   action={
     showUpload ? (
-      <a
-        className="button button-primary"
-        href="#upload-content"
-      >
-        + Upload content
-      </a>
+   <button
+  type="button"
+  className="button button-primary"
+  onClick={() => {
+    const input = document.getElementById('brandguard-upload-input')
+    if (input) input.click()
+    else console.error('Upload input not found')
+  }}
+>
+  + Upload content
+</button>
     ) : undefined
   }
 />
-    {error && <div className="notice notice-error" role="alert">{error}<button className="text-button" onClick={reload}>Retry</button></div>}
+    {error && <div className="notice notice-error" role="alert">{error}<button className="text-button" onClick={() => {
+  console.log('[BrandGuard] Upload button clicked')
+
+  const input = document.getElementById('brandguard-upload-input')
+  console.log('[BrandGuard] Upload input:', input)
+
+  if (input) {
+    input.click()
+  } else {
+    console.error('[BrandGuard] Upload input not found')
+  }
+}}>Retry</button></div>}
     {showUpload && <UploadPanel onUpload={handleUpload} busy={busy} />}
     {showSourceForm && <SourceForm onSave={handleSourceSave} busy={busy} />}
     {group !== 'settings' && group !== 'admin' && <section className="content-card">
-      <header className="card-heading"><div><h2>{group === 'documents' ? 'Document library' : group === 'approvals' ? 'Approval requests' : group === 'sources' ? 'Source register' : group === 'workspace' ? 'Workspace members' : title}</h2><p>{visibleRows.length} item(s) available</p></div><label className="table-search"><span className="sr-only">Search</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search…" /></label></header>
+      <header className="card-heading"><div><h2>{group === 'documents' ? 'Document library' : group === 'approvals' ? 'Approval requests' : group === 'sources' ? 'Source register' : group === 'workspace' ? 'Workspace members' : title}</h2><p>{visibleRows.length} item(s) available</p></div><label className="table-search"><span className="sr-only">Search</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Searchâ€¦" /></label></header>
       {loading && <LoadingSpinner label="Refreshing data" />}
       {group === 'approvals'
         ? <DataTable rows={visibleRows} group={group} onApprovalDecision={handleApprovalDecision} busy={busy} />

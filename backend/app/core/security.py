@@ -22,7 +22,8 @@ except Exception:  # pragma: no cover - fallback for locked-down environments
     VerifyMismatchError = ValueError
     _HAS_ARGON2 = False
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 
 from app.core.config import settings
 
@@ -125,7 +126,6 @@ def create_access_token(
         algorithm=settings.JWT_ALGORITHM,
     )
 
-
 def decode_access_token(token: str) -> dict[str, Any] | None:
     try:
         payload = jwt.decode(
@@ -142,5 +142,5 @@ def decode_access_token(token: str) -> dict[str, Any] | None:
 
         return payload
 
-    except JWTError:
+    except InvalidTokenError:
         return None

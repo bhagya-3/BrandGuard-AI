@@ -1,4 +1,4 @@
-
+﻿
 from typing import Any
 
 from app.review_engine.deterministic import RuleEngine
@@ -166,33 +166,71 @@ class ReviewPipeline:
         # STEP 5: Generate optional correction suggestions
         # --------------------------------------------------
 
-        if generate_suggestions and self.correction_generator:
+        # --------------------------------------------------
+        # STEP 5: Generate correction suggestions for findings
+        # --------------------------------------------------
 
             for finding in all_findings:
+               finding["suggestion_result"] = {
+                "status": "unavailable",
+                "suggested_text": None,
+                "original_text": None,
+                "rationale": (
+                    "AI correction generation is unavailable. "
+                    "A reviewer can make the correction manually."
+                ),
+                "requires_human_review": True,
+                "automatically_applied": False,
+            }
 
-                finding["suggestion_result"] = None
+            if not generate_suggestions or not self.correction_generator:
+                continue
 
-                if not finding.get("evidence_text"):
-                    continue
+            # Only use actual text extracted from the uploaded document.
+            original_text = (finding.get("evidence_text") or "").strip()
 
-                try:
-                    suggestion_result = self.correction_generator.generate(
-                        original_text=finding["evidence_text"],
-                        finding=finding,
-                        brand_guidelines=brand_guidelines,
-                        evidence=finding.get("citations", []),
-                        protected_terms=protected_terms,
-                    )
+            if not original_text:
+                finding["suggestion_result"] = {
+                    "status": "insufficient_context",
+                    "suggested_text": None,
+                    "original_text": None,
+                    "rationale": (
+                        "Supporting document text is unavailable. "
+                        "A reviewer must inspect the finding manually."
+                    ),
+                    "requires_human_review": True,
+                    "automatically_applied": False,
+                }
+                continue
 
-                    finding["suggestion_result"] = suggestion_result
+            try:
+                suggestion_result = self.correction_generator.generate(
+                    original_text=original_text,
+                    finding=finding,
+                    brand_guidelines=brand_guidelines,
+                    evidence=finding.get("citations", []),
+                    protected_terms=protected_terms,
+                )
 
-                except Exception:
-                    finding["suggestion_result"] = {
-                        "status": "unavailable",
-                        "suggested_text": None,
-                        "requires_human_review": True,
-                        "automatically_applied": False,
-                    }
+                suggestion_result["original_text"] = original_text
+                suggestion_result.setdefault("requires_human_review", True)
+                suggestion_result["automatically_applied"] = False
+
+                finding["suggestion_result"] = suggestion_result
+
+            except Exception:
+                finding["suggestion_result"] = {
+                    "status": "unavailable",
+                    "suggested_text": None,
+                    "original_text": original_text,
+                    "rationale": (
+                        "AI correction generation failed. "
+                        "A reviewer can correct this manually."
+                    ),
+                    "requires_human_review": True,
+                    "automatically_applied": False,
+                }
+
 
         # --------------------------------------------------
         # STEP 6: Calculate severity summary
@@ -236,7 +274,7 @@ class ReviewPipeline:
         checker_name: str | None = None,
     ) -> dict:
 
-        return {
+         return {
             "category": finding.get("category", "general"),
             "severity": finding.get("severity", "low"),
             "title": finding.get("title", "Review finding"),
