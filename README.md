@@ -22,22 +22,17 @@ The platform provides document management, automated content reviews, evidence-l
 - Display supporting evidence and document excerpts.
 - Explain why content has been flagged.
 - Track findings and their resolution status.
-
 ### 3. AI-Assisted Correction Suggestions
-- Optional AI-powered correction suggestions.
-- Suggested replacement text and explanations for identified issues.
-- Human review of proposed corrections.
-- Reviewers can accept, edit, or reject suggestions.
-- AI suggestions are not automatically approved or published.
-- Backend support for AI-assisted correction suggestions.
+
+- Optional AI-powered correction suggestions for identified findings.
 - Suggested replacement text and explanations when generation is configured.
+- Reviewers can accept, edit, or reject pending suggestions.
 - Human review is required before proposed corrections are used.
-- AI suggestions are not automatically approved or published.
+- AI suggestions are never automatically approved or published.
 
-**Current limitation:** Live AI correction generation requires a configured LLM API key and available provider API credits. The complete accept/edit/reject suggestion workflow has not yet been verified in the frontend review interface.
+**Current limitation:** Live AI correction generation requires a configured LLM provider API key and available API credits. The accept/edit/reject workflow has been demonstrated with a supported test input, but suggestion generation is not currently available for every finding or document. When generation is unavailable, reviewers can still inspect evidence and manually resolve or dismiss findings.
 
-**Note:** Live AI correction generation requires a configured LLM API key and available provider API credits. The deterministic review functionality operates independently of paid AI access. AI suggestions should be reviewed by a human before use.
-
+**Note:** Deterministic review functionality operates independently of paid AI access. AI-generated suggestions, when available, must be reviewed by a human.
 ### 4. Collaboration and Approvals
 - User authentication and workspace management.
 - Organization-scoped access.
@@ -129,8 +124,7 @@ Latest verified GitHub Actions results for commit `3ccc6fe`:
 [GitHub Actions](https://github.com/bhagya-3/BrandGuard-AI/actions)
 
 ## Known Limitations
-
-- **AI correction generation:** Requires a valid LLM provider API key and available API credits. The complete accept/edit/reject workflow has not yet been verified in the frontend.
+- **AI correction generation:** Requires a valid LLM provider API key and available API credits. Suggestion generation is not guaranteed for every finding. The accept/edit/reject workflow has been demonstrated on a supported test input.
 - **Finding accuracy:** Automated content checks may produce false positives, especially in academic references, dates, identifiers, and bibliography sections. Findings should be reviewed by a human.
 - **PDF OCR:** OCR depends on PyMuPDF and Tesseract being installed and available in the runtime environment. Native-library restrictions in some environments may prevent OCR from running.
 - **External integrations:** AI generation and other optional integrations depend on correctly configured external services and credentials.
@@ -139,8 +133,7 @@ Latest verified GitHub Actions results for commit `3ccc6fe`:
 ## Roadmap
 
 Planned improvements include:
-
-1. Complete and test the frontend correction-suggestion workflow, including accept, edit, and reject actions.
+1. Expand AI correction generation coverage across more finding types and document formats.
 2. Improve finding accuracy and reduce false positives in academic and structured documents.
 3. Expand automated integration and end-to-end testing for document upload, review, collaboration, and approval journeys.
 4. Improve OCR compatibility and document-processing reliability across environments.
