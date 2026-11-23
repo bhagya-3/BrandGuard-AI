@@ -29,6 +29,12 @@ The platform provides document management, automated content reviews, evidence-l
 - Human review of proposed corrections.
 - Reviewers can accept, edit, or reject suggestions.
 - AI suggestions are not automatically approved or published.
+- Backend support for AI-assisted correction suggestions.
+- Suggested replacement text and explanations when generation is configured.
+- Human review is required before proposed corrections are used.
+- AI suggestions are not automatically approved or published.
+
+**Current limitation:** Live AI correction generation requires a configured LLM API key and available provider API credits. The complete accept/edit/reject suggestion workflow has not yet been verified in the frontend review interface.
 
 **Note:** Live AI correction generation requires a configured LLM API key and available provider API credits. The deterministic review functionality operates independently of paid AI access. AI suggestions should be reviewed by a human before use.
 
@@ -77,6 +83,70 @@ BrandGuard AI uses a modular frontend and backend architecture.
 8. ClamAV provides antivirus scanning for uploaded files.
 9. The document extraction pipeline extracts text from supported formats and uses OCR when required.
 10. The review pipeline generates findings, attaches evidence, and manages correction suggestion status.
+## Testing
+
+BrandGuard AI includes automated backend tests and frontend build validation.
+
+### Backend Tests
+
+Run the backend test suite:
+
+```powershell
+cd backend
+python -m pytest -q
+```
+
+The latest verified local test run completed with:
+
+- **63 tests passed**
+- 1 warning
+- Coverage includes API behavior, document processing, review workflows, and approval organization isolation.
+
+### Frontend Build
+
+Run the production build:
+
+```powershell
+cd frontend
+npm install
+npm run build
+```
+
+The frontend production build completed successfully.
+
+### Security Checks
+
+The project includes automated GitHub Actions workflows for:
+
+- Backend and frontend validation.
+- Dependency security auditing.
+
+Latest verified GitHub Actions results for commit `3ccc6fe`:
+
+- BrandGuard AI Tests: Passed.
+- BrandGuard AI Security Checks: Passed.
+
+[GitHub Actions](https://github.com/bhagya-3/BrandGuard-AI/actions)
+
+## Known Limitations
+
+- **AI correction generation:** Requires a valid LLM provider API key and available API credits. The complete accept/edit/reject workflow has not yet been verified in the frontend.
+- **Finding accuracy:** Automated content checks may produce false positives, especially in academic references, dates, identifiers, and bibliography sections. Findings should be reviewed by a human.
+- **PDF OCR:** OCR depends on PyMuPDF and Tesseract being installed and available in the runtime environment. Native-library restrictions in some environments may prevent OCR from running.
+- **External integrations:** AI generation and other optional integrations depend on correctly configured external services and credentials.
+- **Human approval:** Automated findings and suggestions do not replace human review or final approval decisions.
+
+## Roadmap
+
+Planned improvements include:
+
+1. Complete and test the frontend correction-suggestion workflow, including accept, edit, and reject actions.
+2. Improve finding accuracy and reduce false positives in academic and structured documents.
+3. Expand automated integration and end-to-end testing for document upload, review, collaboration, and approval journeys.
+4. Improve OCR compatibility and document-processing reliability across environments.
+5. Enhance onboarding, empty states, error messages, and reviewer guidance.
+6. Expand brand guideline verification and reporting capabilities.
+
 
 ## Run with Docker Compose
 
@@ -117,26 +187,6 @@ The root environment file also supports `VITE_API_BASE_URL`. Docker Compose defa
 ```env
 VITE_API_BASE_URL=http://localhost:8000/api/v1
 ```
-
-### 3. Configure backend environment
-
-Create the backend environment file:
-
-```powershell
-Copy-Item .\backend\.env.example .\backend\.env
-```
-
-The backend environment file contains optional AI configuration:
-
-- `LLM_API_KEY`
-- `LLM_BASE_URL`
-- `LLM_MODEL`
-
-AI correction generation requires a valid provider API key and available API credits.
-
-Docker Compose supplies the database, Redis, MinIO, and other service connection settings to the backend. The backend `.env` file is still required by the Compose configuration.
-
-Never commit environment files or API credentials.
 
 ### 4. Build and start the application
 
@@ -238,4 +288,4 @@ The frontend runs at:
 
 http://localhost:5173
 
-For local frontend development, the example frontend environment file can use the current page host
+For local frontend development, leave `VITE_API_BASE_URL` empty in `frontend/.env`. The frontend will use the current page host on port 8000 for API requests.
