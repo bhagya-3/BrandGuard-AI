@@ -1,4 +1,5 @@
-﻿
+﻿from asyncio.log import logger
+import logging
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
@@ -17,6 +18,7 @@ from app.services.source_service import SourceService
 
 
 class ReviewServiceError(Exception):
+    logger = logging.getLogger(__name__)
     pass
 
 
@@ -257,6 +259,7 @@ class ReviewService:
             return review
 
         except Exception as exc:
+            logger.exception("Document review failed: %s", exc)
             review.status = "failed"
             review.summary = "Review processing failed."
             review.completed_at = datetime.now(timezone.utc)
