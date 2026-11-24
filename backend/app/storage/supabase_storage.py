@@ -30,6 +30,7 @@ class SupabaseStorage(StorageInterface):
             f"{quote(self.bucket, safe='')}/{quote(key, safe='/')}"
         )
 
+       
     def upload_file(
         self,
         storage_key: str,
@@ -49,8 +50,17 @@ class SupabaseStorage(StorageInterface):
             content=content,
             timeout=self.timeout,
         )
+
+        if response.is_error:
+            print(
+                "SUPABASE UPLOAD ERROR:",
+                response.status_code,
+                response.text,
+            )
+
         response.raise_for_status()
         return validate_storage_key(storage_key)
+
 
     def download_file(self, storage_key: str) -> bytes:
         response = httpx.get(
