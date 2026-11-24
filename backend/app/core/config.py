@@ -1,4 +1,4 @@
-
+﻿
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
     AWS_S3_BUCKET: str = ""
+    SUPABASE_URL: str = ""
+    SUPABASE_SECRET_KEY: str = ""
+    SUPABASE_BUCKET: str = "brandguard-files"
 
     AZURE_STORAGE_CONNECTION_STRING: str = ""
     AZURE_STORAGE_ACCOUNT_NAME: str = ""
