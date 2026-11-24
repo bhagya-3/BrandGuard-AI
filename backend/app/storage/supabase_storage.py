@@ -61,17 +61,27 @@ class SupabaseStorage(StorageInterface):
         response.raise_for_status()
         return validate_storage_key(storage_key)
 
-
+     
     def download_file(self, storage_key: str) -> bytes:
         response = httpx.get(
             self._object_url(storage_key),
             headers=self.headers,
             timeout=self.timeout,
         )
+
+        if response.is_error:
+            print(
+                "SUPABASE DOWNLOAD ERROR:",
+                response.status_code,
+                response.text,
+            )
+
         if response.status_code == 404:
             raise FileNotFoundError("Stored document was not found.")
+
         response.raise_for_status()
         return response.content
+
 
     def delete_file(self, storage_key: str) -> bool:
         key = validate_storage_key(storage_key)
