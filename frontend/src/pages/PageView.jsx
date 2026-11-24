@@ -541,7 +541,11 @@ function ProfileSettingsPanel({ pageKey }) {
 
           <div>
             <small>Account Role</small>
-            <h3>{user?.role || user?.role_name || 'Not available'}</h3>
+            <h3>
+  {Array.isArray(user?.roles)
+    ? user.roles.join(', ')
+    : user?.role || user?.role_name || 'Not available'}
+</h3>
           </div>
         </div>
 
